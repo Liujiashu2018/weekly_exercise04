@@ -98,7 +98,7 @@ These exercises will reiterate what you learned in the "Mapping data with R" tut
 
   1. Add the `Starbucks` locations to a world map. Add an aesthetic to the world map that sets the color of the points according to the ownership type. What, if anything, can you deduce from this visualization?  
   
-From the map we can see that most of the Starbucks are concentrated in the East coast of North America, UK and East and Southeast of Asia. 
+From the map we can see that most of the Starbucks are concentrated in the East coast of North America, UK and East and Southeast of Asia. The map shows that most of the Starbucks in California are company owned. In South Korea and Japan, most of the Starbucks are joint ventured, while in China, many Starbucks are company owned. 
 ```{r}
 # Get the map information
 world <- get_stamenmap(
@@ -110,7 +110,7 @@ world <- get_stamenmap(
 ggmap(world) + # creates the map "background"
   geom_point(data = Starbucks, 
              aes(x = Longitude, y = Latitude, color = `Ownership Type`), 
-             alpha = .3, 
+             alpha = .7, 
              size = .1) +
   theme_map()
 ```
@@ -134,6 +134,8 @@ ggmap(Twin_Cities_map) + # creates the map "background"
 
 
   3. In the Twin Cities plot, play with the zoom number. What does it do?  (just describe what it does - don't actually include more than one map).  
+  
+I change the zoom number from 12 to 10, and the background of the map becomes unclear, showing up less details.  
 ```{r}
 
 Twin_Cities_map <- get_stamenmap(
@@ -202,7 +204,23 @@ starbucks_with_2018_pop_est <-
 
   6. **`dplyr` review**: Look through the code above and describe what each line of code does.
 
+```{r}
+census_pop_est_2018 <- read_csv("https://www.dropbox.com/s/6txwv3b4ng7pepe/us_census_2018_state_pop_est.csv?dl=1") %>% 
+  #gets data from the csv file
+  separate(state, into = c("dot","state"), extra = "merge") %>% # separates "dot" and "state" variables, using extra and "merge" to split at most length times. Make sure that "sparate" function does not return "New York" as "New".  
+  select(-dot) %>% # singles out the "dot" variable
+  mutate(state = str_to_lower(state))#changes state_name all to lower-case letters
+
+starbucks_with_2018_pop_est <-
+  starbucks_us_by_state %>% 
+  left_join(census_pop_est_2018,# combines census_pop_est_2018 and starbucks_us_by_state to create the dataset starbucks_with_2018_pop_est
+            by = c("state_name" = "state")) %>% 
+  mutate(starbucks_per_10000 = (n/est_pop_2018)*10000)# adds a new column to the new dataset starbucks_with_2018_pop_est called "starbucks_per_10000", and starbucks_per_10000 = (n/est_pop_2018)*10000.
+```
+
   7. Create a choropleth map that shows the number of Starbucks per 10,000 people on a map of the US. Use a new fill color, add points for all Starbucks in the US (except Hawaii and Alaska), add an informative title for the plot, and include a caption that says who created the plot (you!). Make a conclusion about what you observe.
+  
+Conclusion: The map shows that the number of Starbucks per 10,000 people is higher in the East Coast and West Coast, but lower in Central. It also shows that California has the largest number of Starbucks in the U.S. 
 ```{r}
 states_map <- map_data("state")
 starbucks_in_us <- Starbucks %>% 
@@ -348,6 +366,8 @@ ggmap(dc_map)+
   
   10. Only 14.4% of the trips in our data are carried out by casual users. Create a plot that shows which area(s) have stations with a much higher percentage of departures by casual users. What patterns do you notice? Also plot this on top of a map. I think it will be more clear what the patterns are.
   
+  
+  Stations with a high percentage of departures by casual users are concentrated in the area with longitude -77.05 and latitutde 38.9. The percentage of departures by casual users is lower in areas with higher latitude. 
 ```{r}
 Stations%>%
   summarise(min(lat),
@@ -378,6 +398,8 @@ ggmap(dc_map)+
 The following exercises will use the COVID-19 data from the NYT.
 
   11. Create a map that colors the states by the most recent cumulative number of COVID-19 cases (remember, these data report cumulative numbers so you don't need to compute that). Describe what you see. What is the problem with this map?
+  
+The map shows the cumulative number of Covid19 in each state. From the graph, we can see that Texas and California have the most cumulative cases in the U.S.. The problem with this map is that it doesn't show the relationship between the number of cumulative cases and the population density, given that each state has different population. 
 ```{r}
 states_map<-map_data("state")
 
@@ -485,20 +507,30 @@ leaflet(mpls_all)%>%
 ```
   
   18. Use `leaflet` to create a map of your own choosing. Come up with a question you want to try to answer and use the map to help answer that question. Describe what your map shows. 
-```{r}
-pal_sus<-colorNumeric("viridis",
-                      domain = mpls_all$prop_suspicious)
-leaflet(mpls_all)%>%
-  addProviderTiles(providers$Stamen.Toner)%>%
-  addPolygons(fillColor = ~pal_sus(prop_suspicious),
-              fillOpacity = 0.5,
-              label = ~BDNAME,
-              color = "black",
-              weight = 1,
-              opacity = 1)%>%
-  addLegend(pal = pal_sus,
-            values = ~prop_suspicious)
+Question:Where do most of my favorite places concentrate?
+My map shows where my favorite places locate in Twin Cities. It also shows that most of my favorite places concentrate in St. Paul. Many of them are places around campus. 
 
+```{r}
+pal <- colorFactor(palette(c("red", "blue")),
+                   domain = favorite_places$top_three)
+  
+leaflet(data=favorite_places)%>%
+  addTiles()%>%
+  addProviderTiles(providers$CartoDB.Voyager)%>%
+  addCircles(lng = ~long,
+             lat = ~lat,
+             label = ~place,
+             weight = 10,
+             opacity = 1,
+             color = ~pal(top_three))%>%
+  addLegend("bottomleft",
+            pal = pal,
+            values = ~top_three,
+            opacity = 1)%>%
+  addPolylines(lng = ~long,
+               lat = ~lat,
+               color="white",
+               weight = 1)
 
 ```
   
